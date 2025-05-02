@@ -1,5 +1,6 @@
 # Телеграм-бот для помощи с заказами из китайских маркетплейсов
 import aiohttp
+import json
 import logging
 import os
 from aiogram import Bot, Dispatcher, types, F
@@ -31,10 +32,8 @@ async def get_cny_rate():
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
-                if resp.status != 200:
-                    print(f"Ошибка при запросе курса: {resp.status}")
-                    return None
-                data = await resp.json()
+                text = await resp.text()
+                data = json.loads(text)
                 return round(data["Valute"]["CNY"]["Value"], 2)
     except Exception as e:
         print(f"Ошибка получения курса CNY: {e}")
