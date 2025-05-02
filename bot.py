@@ -1,4 +1,5 @@
 # Телеграм-бот для помощи с заказами из китайских маркетплейсов
+import aiohttp
 import logging
 import os
 from aiogram import Bot, Dispatcher, types, F
@@ -24,6 +25,16 @@ main_kb = ReplyKeyboardMarkup(
         [KeyboardButton(text="📈 Курс юаня")]
     ], resize_keyboard=True
 )
+
+async def get_cny_rate():
+    url = "https://www.cbr-xml-daily.ru/daily_json.js"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                data = await resp.json()
+                return round(data["Valute"]["CNY"]["Value"], 2)
+    except Exception as e:
+        return None
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
@@ -55,7 +66,7 @@ async def start_calculation(message: types.Message):
 async def handle_price_input(message: types.Message):
     try:
         cny = float(message.text)
-        rate = 13.0  # Пример курса юаня, можно обновлять через API
+        rate = await get_cny_rate()
         total = round(cny * rate * 1.15, 2)
         await message.answer(f"✉️ Стоимость в рублях: <b>{total}</b> ₽ (по курсу {rate} + 15%)")
     except ValueError:
@@ -114,8 +125,11 @@ async def video_guides(message: types.Message):
 
 @dp.message(F.text == "📈 Курс юаня")
 async def show_rate(message: types.Message):
-    rate = 13.0  # Пример
-    await message.answer(f"📈 Сегодняшний курс юаня: {rate} ₽. Итоговый курс фиксируется в момент заказа.")
+    rate = await get_cny_rate()
+    if rate:
+        await message.answer(f"📈 Сегодняшний курс юаня: {rate} ₽.\nФинальный курс фиксируется в момент заказа.")
+    else:
+        await message.answer("❌ Не удалось получить курс юаня. Попробуйте позже.")
 
 @dp.message(F.text == "🔙 Назад к меню")
 async def back_to_menu(message: types.Message):
